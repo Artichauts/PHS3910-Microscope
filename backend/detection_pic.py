@@ -6,16 +6,33 @@ def Load_tif_file_norm(file_path):
     """Retourne le contenu d'un .tif normalisé entre 0 et 1.
     Si le fichier est RGB, on fait la moyenne des 3 couleurs."""
     data = tifffile.imread(file_path)
-    val_max = np.iinfo(data.dtype).max       # 255 ou 65535
-    data = data / val_max                    # normalise selon le nombre de bit (255 si 8bits, 65535 si 16bits)
+    val_max = np.iinfo(data.dtype).max       # 255 ou 65535 (255 si 8bits, 65535 si 16bits)
+    data = data / val_max                    # normalise selon le nombre de bit
     if data.ndim == 4:                       # si RGB : (pages, hauteur, largeur, 3)
         data = data.mean(axis=-1)            # on fait la moyenne des 3 couleurs
     return data, val_max
 
-#
 
+#####################################################################################################
+# Moyenne des positions des différents pixels pondérée par leur intensité
+#####################################################################################################
 
+def centroide(image):
+    """Retourne le centroïde d'une image 2D (x0, y0) en pixels. C'est à dire 
+    la moyenne des positions des différents pixels pondérée par leur intensité."""
+    image = (image - np.median(image)).clip(min=0)   # on enlève le fond
+    y, x = np.indices(image.shape)                   # grilles de positions
+    total = image.sum()
+    return (x * image).sum() / total, (y * image).sum() / total
 
+def all_tif_pos_cent(chemin):
+    """Retourne les positions x0 et y0 pour toutes les pages d'un .tif"""
+    data, val_max = Load_tif_file_norm(chemin)
+    positions = []
+    for i in range(data.shape[0]):
+        x0, y0 = centroide(data[i])
+        positions.append([x0, y0])
+    return positions
 
 
 #####################################################################################################
