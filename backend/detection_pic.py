@@ -19,8 +19,10 @@ def gauss(x, a, x0, sigma, b):
 def fit_profil(profil):
     """Fit gaussien d'un profil 1D. Retourne les paramètres et leurs incertitudes."""
     x = np.arange(len(profil))
-    # Valeurs de départ : le fit en a besoin pour bien converger
-    p0 = [profil.max() - profil.min(), np.argmax(profil), 2, profil.min()]
+
+    # Valeurs de départ 
+    p0 = [profil.max() - profil.min(), np.argmax(profil), 4, profil.min()]
+
     popt, pcov = curve_fit(gauss, x, profil, p0=p0)
     erreurs = np.sqrt(np.diag(pcov))
     return popt, erreurs
@@ -34,4 +36,13 @@ def gaussian_fit(image):
     popt_x, err_x = fit_profil(profil_x)
     popt_y, err_y = fit_profil(profil_y)
     return popt_x[1], popt_y[1], err_x[1], err_y[1]
+
+def all_tif_pos(chemin):
+    """Retourne les positions x0, y0 et leurs incertitudes pour toutes les pages d'un .tif"""
+    data = Load_tif_file_norm(chemin)
+    positions = []
+    for i in range(data.shape[0]):
+        x0, y0, err_x, err_y = gaussian_fit(data[i])
+        positions.append((x0, y0, err_x, err_y))
+    return positions
 
