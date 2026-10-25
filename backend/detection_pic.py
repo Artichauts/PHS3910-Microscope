@@ -2,15 +2,25 @@ import numpy as np
 import tifffile
 from scipy.optimize import curve_fit
 
-
 def Load_tif_file_norm(file_path):
     """Retourne le contenu d'un .tif normalisé entre 0 et 1.
     Si le fichier est RGB, on fait la moyenne des 3 couleurs."""
     data = tifffile.imread(file_path)
-    data = data / np.iinfo(data.dtype).max   # normalise selon le nombre de bit (255 si 8bits, 65535 si 16bits)
+    val_max = np.iinfo(data.dtype).max       # 255 ou 65535
+    data = data / val_max                    # normalise selon le nombre de bit (255 si 8bits, 65535 si 16bits)
     if data.ndim == 4:                       # si RGB : (pages, hauteur, largeur, 3)
         data = data.mean(axis=-1)            # on fait la moyenne des 3 couleurs
-    return data
+    return data, val_max
+
+#
+
+
+
+
+
+#####################################################################################################
+# Fit gaussien en 1D
+#####################################################################################################
 
 def gauss(x, a, x0, sigma, b):
     # Gaussian function
@@ -21,7 +31,7 @@ def fit_profil(profil):
     x = np.arange(len(profil))
 
     # Valeurs de départ 
-    p0 = [profil.max() - profil.min(), np.argmax(profil), 4, profil.min()]
+    p0 = [profil.max() - profil.min(), np.argmax(profil), 3, profil.min()]
 
     popt, pcov = curve_fit(gauss, x, profil, p0=p0)
     erreurs = np.sqrt(np.diag(pcov))
@@ -35,14 +45,19 @@ def gaussian_fit(image):
     profil_y = image.sum(axis=1)   # on additionne les colonnes -> profil selon y
     popt_x, err_x = fit_profil(profil_x)
     popt_y, err_y = fit_profil(profil_y)
-    return popt_x[1], popt_y[1], err_x[1], err_y[1]
+    return popt_x[1], popt_y[1], err_x[1], err_y[1], popt_x[2]
 
-def all_tif_pos(chemin):
+def erreur_localisation(image, sigma, val_max):
+    N = ((image - np.median(image)).clip(min=0).sum())*val_max
+    return sigma / np.sqrt(N)
+
+def all_tif_pos_gauss(chemin):
     """Retourne les positions x0, y0 et leurs incertitudes pour toutes les pages d'un .tif"""
-    data = Load_tif_file_norm(chemin)
+    data, val_max = Load_tif_file_norm(chemin)
     positions = []
     for i in range(data.shape[0]):
-        x0, y0, err_x, err_y = gaussian_fit(data[i])
-        positions.append((x0, y0, err_x, err_y))
+        x0, y0, err_x, err_y, sigma = gaussian_fit(data[i])
+        err_loc = erreur_localisation(data[i], sigma, val_max)
+        positions.append([x0, y0, err_x, err_y, err_loc])
     return positions
 
