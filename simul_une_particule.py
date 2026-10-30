@@ -1,6 +1,7 @@
 from backend.brown_movement import generate_brownian_motion
 from backend.fct_PSF import particle_image
 from backend.detection_pic import position_gaussian, position_centroid
+from backend.regression import regression, msd_fft
 
 import numpy as np
 import matplotlib.pyplot as plt
@@ -8,7 +9,7 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
     # Paramètres pour le mouvement brownien
-    N_steps = 3  # Nombre de pas de trajectoire
+    N_steps = 50  # Nombre de pas de trajectoire
     D = 1          # Coefficient de diffusion (um^2/s)
     time_step = 0.1  # Longueur de chaque image (s)
 
@@ -69,4 +70,21 @@ if __name__ == "__main__":
     plt.title('Localisation des particules')
     plt.legend()
     plt.show()
-    
+
+
+    msd_gaussian = msd_fft(positions_gaussian)
+    msd_centroid = msd_fft(position_centroid)
+
+    model_gaussian, m_gaussian, c_gaussian, r2_gaussian = regression(timestamp, msd_gaussian)
+    model_centroid, m_centroid, c_centroid, r2_centroid = regression(timestamp, msd_centroid)
+
+    plt.plot(np.arange(N_steps), msd_gaussian, label='MSD Gaussien')
+    plt.plot(np.arange(N_steps), msd_centroid, label='MSD Centroid')
+    plt.plot( model_gaussian, label='Régression Gaussienne')
+    plt.plot(model_centroid, label='Régression Centroid')   
+    plt.plot(np.arange(N_steps), 4 * D * time_step * np.arange(N_steps), label='Théorie')
+    plt.xlabel('Nombre de pas')
+    plt.ylabel('MSD (A.U)')
+    plt.title('MSD cumulatif des positions')
+    plt.legend()
+    plt.show()
