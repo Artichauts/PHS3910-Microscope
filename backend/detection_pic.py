@@ -86,4 +86,14 @@ def all_tif_pos_gauss(chemin):
         positions.append([x0, y0, err_x, err_y, err_loc])
     return positions
 
-def
+def position_gaussian(data):
+    """Retourne les positions x0, y0 et leurs incertitudes pour toutes les pages d'un numpy array 3D (images 2D)
+    input : data (numpy array 3D)
+    output : positions (list of lists) : [[x0, y0, err_x, err_y, err_loc], ...]
+    """
+    positions = []
+    for i in range(data.shape[0]):
+        x0, y0, err_x, err_y, sigma = gaussian_fit(data[i])
+        err_loc = erreur_localisation(data[i], sigma, 1)
+        positions.append([x0, y0, err_x, err_y, err_loc])
+    return positions
