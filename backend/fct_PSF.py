@@ -146,12 +146,13 @@ def particle_image(NA, M, pixel_size, LAMBDA, radius, shape=(101, 101), center=N
 
 if __name__ == "__main__":
     LAMBDA = 532e-9  # longueur d'onde (m)
-    R = 0.0215e-6
+    R = 2e-6
     pixel_size = 1.55e-6
-    M = -40
+    M = -10
+    NA = 0.3
     center = (201.7, 289.1)
 
-    img = particle_image(NA=0.9, M=M, pixel_size=pixel_size, LAMBDA=LAMBDA, radius=R,
+    img = particle_image(NA=NA, M=M, pixel_size=pixel_size, LAMBDA=LAMBDA, radius=R,
                          shape=(380, 507), center=center)
 
     plt.imshow(img, cmap="gray", origin="lower")
