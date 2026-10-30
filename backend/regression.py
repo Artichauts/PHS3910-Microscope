@@ -3,24 +3,6 @@ import math
 import matplotlib.pyplot as plt
 import pandas as pd
 
-N_steps = 100 # Nombre de pas de trajectoire
-
-D = 1 #Coefficient de diffusion (um^2/s)
-
-time_step = 0.1 # Longueur de chaque image (s)
-
-delta_positions = np.random.normal(loc=0, scale= math.sqrt(2*D*time_step),
-
-size=(N_steps,3))
-
-positions_xy = np.cumsum(delta_positions, axis=0)
-x, y, z = positions_xy.T
-timestamp =  np.linspace(0, N_steps*time_step, N_steps)
-
-
-plt.plot(x,y)
-plt.show()
-
 
 def cumstd(positions):
   std = pd.DataFrame(positions).expanding().std(ddof=0).to_numpy()
@@ -81,4 +63,4 @@ def regression(x, y, a_x= None, a_y= None):
     else :
       return mymodel, m, c, r2
 
-    
+

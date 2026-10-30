@@ -72,7 +72,7 @@ def psf_image(NA, M, pixel_size, shape=(101, 101), center=None, oversample=1):
     # moyenne sur les s x s sous-échantillons de chaque pixel
     return img.reshape(ny, s, nx, s).mean(axis=(1, 3))
 
-def particle_image(NA, M, pixel_size, radius, shape=(101, 101), center=None,
+def particle_image(NA, M, pixel_size, LAMBDA, radius, shape=(101, 101), center=None,
                    profile="sphere", oversample=5, kernel_airy_radii=10):
     """
     Simule l'image d'une particule ronde émissive sur une caméra.
