@@ -1,6 +1,7 @@
 import numpy as np
 import tifffile
 from scipy.optimize import curve_fit
+from scipy.ndimage import gaussian_filter, label, maximum_position, sum 
 
 def Load_tif_file_norm(file_path):
     """Retourne le contenu d'un .tif normalisé entre 0 et 1.
@@ -97,3 +98,47 @@ def position_gaussian(data):
         err_loc = erreur_localisation(data[i], sigma, 1)
         positions.append([x0, y0, err_x, err_y, err_loc])
     return positions
+
+#####################################################################################################
+# Suivit de plusieurs particule avec fit gaussien
+#####################################################################################################
+
+def decouper(image, x, y, demi=15):
+    """Retourne l'encadré autour de (x, y) et son coin en haut à gauche."""
+    x, y = int(round(x)), int(round(y))
+    x1, x2 = max(x - demi, 0), min(x + demi + 1, image.shape[1])
+    y1, y2 = max(y - demi, 0), min(y + demi + 1, image.shape[0])
+    return image[y1:y2, x1:x2], x1, y1
+
+def trouver_particules(image, k=5, aire_min=5):
+    """Retourne la liste des positions (x, y) des particules trouvées."""
+    lisse = gaussian_filter(image, 2)                   # réduit le bruit
+    fond = np.median(lisse)
+    bruit = 1.4826 * np.median(np.abs(lisse - fond))    # estimation du bruit
+    masque = lisse > fond + k * bruit                   # seuil
+    etiquettes, n = label(masque)                       # numérote chaque tache
+    if n == 0:
+        return []
+    indices = range(1, n + 1)
+    aires = sum(masque, etiquettes, indices)
+    pics = maximum_position(lisse, etiquettes, indices)
+    return [(x, y) for (y, x), aire in zip(pics, aires) if aire >= aire_min]
+
+def suivre_particules(data, demi=20):
+    """data : tableau (pages, hauteur, largeur). Retourne une trace par particule."""
+    positions = trouver_particules(data[0])          # toutes les particules de la 1re image
+    traces = [[p] for p in positions]                # une liste de positions par particule
+    derniere = list(positions)                       # dernière position valide de chacune
+
+    for image in data[1:]:
+        for k, trace in enumerate(traces):
+            x_prec, y_prec = derniere[k]
+            fenetre, x1, y1 = decouper(image, x_prec, y_prec, demi)
+            try:
+                x0, y0, err_x, err_y, sigma = gaussian_fit(fenetre)
+                x, y = x0 + x1, y0 + y1              # retour aux coordonnées de l'image
+                trace.append((x, y))
+                derniere[k] = (x, y)
+            except RuntimeError:                     # fit raté : on garde la trace, on note nan
+                trace.append((np.nan, np.nan))
+    return traces
