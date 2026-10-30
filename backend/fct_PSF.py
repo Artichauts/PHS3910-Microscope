@@ -3,7 +3,6 @@ from scipy.special import j1
 import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
 
-LAMBDA = 532e-9  # longueur d'onde (m)
 
 def psf(NA, r, M):
     """
@@ -144,13 +143,15 @@ def particle_image(NA, M, pixel_size, radius, shape=(101, 101), center=None,
     return fine.reshape(ny, s, nx, s).sum(axis=(1, 3))
 
 
-R = 2e-6 
-img = particle_image(NA=0.9, M=-40, pixel_size=1.55e-6, radius=R,
-                     shape=(380, 507), center=(201.7, 289.1))
+if __name__== "__main__":
+    LAMBDA = 532e-9  # longueur d'onde (m)
+    R = 2e-6 
+    img = particle_image(NA=0.9, M=-40, pixel_size=1.55e-6, radius=R,
+                        shape=(380, 507), center=(201.7, 289.1))
 
-plt.imshow(img, cmap="gray", origin="lower")
-plt.xlabel("x (pixels)")
-plt.ylabel("y (pixels)")
-plt.show()
+    plt.imshow(img, cmap="gray", origin="lower")
+    plt.xlabel("x (pixels)")
+    plt.ylabel("y (pixels)")
+    plt.show()
 
-# oversample: Un vrai pixel de caméra n’échantillonne pas la PSF en un seul point : il intègre la lumière sur toute sa surface. Avec oversample=1, on calcule la PSF seulement au centre de chaque pixel (approximation ponctuelle). Avec oversample=s, on découpe chaque pixel en une grille de $s \times s$ sous-points, on calcule la PSF en chacun, puis on fait la moyenne. Plus s est grand, plus c’est fidèle à un vrai capteur, mais plus le calcul est long. Quand le pic de la PSF est étalé sur plusieurs pixels, oversample=1 suffit presque. Quand il ne couvre que 1 à 3 pixels, oversample=3 à 5 fait une vraie différence.
+    # oversample: Un vrai pixel de caméra n’échantillonne pas la PSF en un seul point : il intègre la lumière sur toute sa surface. Avec oversample=1, on calcule la PSF seulement au centre de chaque pixel (approximation ponctuelle). Avec oversample=s, on découpe chaque pixel en une grille de $s \times s$ sous-points, on calcule la PSF en chacun, puis on fait la moyenne. Plus s est grand, plus c’est fidèle à un vrai capteur, mais plus le calcul est long. Quand le pic de la PSF est étalé sur plusieurs pixels, oversample=1 suffit presque. Quand il ne couvre que 1 à 3 pixels, oversample=3 à 5 fait une vraie différence.
