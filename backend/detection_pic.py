@@ -34,6 +34,14 @@ def all_tif_pos_cent(chemin):
         positions.append([x0, y0])
     return positions
 
+def position_centroid(data):
+    """Retourne les positions x0 et y0 pour toutes les pages d'un numpy array 3D (images 2D)"""
+    positions = []
+    for i in range(data.shape[0]):
+        x0, y0 = centroide(data[i])
+        positions.append([x0, y0])
+    return positions
+
 
 #####################################################################################################
 # Fit gaussien en 1D
