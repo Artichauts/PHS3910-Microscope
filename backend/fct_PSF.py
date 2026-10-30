@@ -2,6 +2,7 @@ import numpy as np
 from scipy.special import j1
 import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
+from matplotlib.patches import Circle
 
 
 def psf(NA, r, M, LAMBDA):
@@ -143,15 +144,27 @@ def particle_image(NA, M, pixel_size, LAMBDA, radius, shape=(101, 101), center=N
     return fine.reshape(ny, s, nx, s).sum(axis=(1, 3))
 
 
-if __name__== "__main__":
+if __name__ == "__main__":
     LAMBDA = 532e-9  # longueur d'onde (m)
-    R = 2e-6 
-    img = particle_image(NA=0.9, M=-40, pixel_size=1.55e-6, radius=R,
-                        shape=(380, 507), center=(201.7, 289.1))
+    R = 2e-6
+    pixel_size = 1.55e-6
+    M = -10
+    NA = 0.3
+    center = (201.7, 289.1)
+
+    img = particle_image(NA=NA, M=M, pixel_size=pixel_size, LAMBDA=LAMBDA, radius=R,
+                         shape=(380, 507), center=center)
 
     plt.imshow(img, cmap="gray", origin="lower")
     plt.xlabel("x (pixels)")
     plt.ylabel("y (pixels)")
+
+    # --- particule réelle superposée à l'image ---
+    R_pix = abs(M) * R / pixel_size   # rayon de la particule dans le plan image (pixels)
+    plt.gca().add_patch(Circle(center, R_pix, fill=False, edgecolor="red", lw=1.5,
+                               label="particule (contour réel)"))
+    plt.plot(*center, "r+", label="centre")   # optionnel : marque le centre
+    plt.legend()
     plt.show()
 
     # oversample: Un vrai pixel de caméra n’échantillonne pas la PSF en un seul point : il intègre la lumière sur toute sa surface. Avec oversample=1, on calcule la PSF seulement au centre de chaque pixel (approximation ponctuelle). Avec oversample=s, on découpe chaque pixel en une grille de $s \times s$ sous-points, on calcule la PSF en chacun, puis on fait la moyenne. Plus s est grand, plus c’est fidèle à un vrai capteur, mais plus le calcul est long. Quand le pic de la PSF est étalé sur plusieurs pixels, oversample=1 suffit presque. Quand il ne couvre que 1 à 3 pixels, oversample=3 à 5 fait une vraie différence.
