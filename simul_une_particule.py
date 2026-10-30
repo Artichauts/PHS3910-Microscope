@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 if __name__ == "__main__":
     # Paramètres pour le mouvement brownien
-    N_steps = 100  # Nombre de pas de trajectoire
+    N_steps = 3  # Nombre de pas de trajectoire
     D = 1          # Coefficient de diffusion (um^2/s)
     time_step = 0.1  # Longueur de chaque image (s)
 
@@ -32,8 +32,8 @@ if __name__ == "__main__":
     pixel_size = 1.55e-6
     R = 2e-6
 
-    dim_x = int(np.max(x) - np.min(x)) + 1
-    dim_y = int(np.max(y) - np.min(y)) + 1
+    dim_x = np.int64(np.max(x) - np.min(x)) + 1
+    dim_y = np.int64(np.max(y) - np.min(y)) + 1
 
 
     image_array = np.zeros((N_steps, 380, 507))  # Tableau pour stocker les images générées
@@ -42,7 +42,7 @@ if __name__ == "__main__":
 
     for i in tqdm(range(N_steps), desc="Génération des images"):
         img = particle_image(NA=0.9, M=-40, pixel_size=1.55e-6, radius=R, LAMBDA=Lambda,
-                        shape=(380, 507), center=(x[i], y[i]))
+                        shape=(380, 507), center=(x[i] + 380/2, y[i] + 507/2))
         image_array[i] = img
         # Ici vous pouvez ajouter du code pour visualiser ou sauvegarder l'image générée si nécessaire.
 
@@ -53,9 +53,17 @@ if __name__ == "__main__":
     positions_gaussian = position_gaussian(image_array)
     position_centroid = position_centroid(image_array)
 
-    plt.plot(x, y, label='Trajectoire Brownienne')
-    plt.scatter(positions_gaussian[:, 0], positions_gaussian[:, 1], color='red', label='Positions Gaussiennes')
+
+    positions_gaussian = np.array(positions_gaussian)
+
+    plt.scatter(positions_gaussian[:, 0], positions_gaussian[:, 1],
+                color='red', label='Positions Gaussiennes')
+    position_centroid = np.array(position_centroid)
+
     plt.scatter(position_centroid[:, 0], position_centroid[:, 1], color='green', label='Positions Centroides')
+    
+    plt.plot(x + 380/2, y + 507/2, label='Trajectoire Brownienne')
+
     plt.xlabel('Position X (A.U)')
     plt.ylabel('Position Y (A.U)')
     plt.title('Localisation des particules')
