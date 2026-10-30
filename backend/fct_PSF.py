@@ -4,7 +4,7 @@ import matplotlib.pyplot as plt
 from scipy.signal import fftconvolve
 
 
-def psf(NA, r, M):
+def psf(NA, r, M, LAMBDA):
     """
     PSF d'Airy normalisée (intensité) dans le plan image d'un système 4f.
 
@@ -29,7 +29,7 @@ def psf(NA, r, M):
 
     return ratio**2
 
-def psf_image(NA, M, pixel_size, shape=(101, 101), center=None, oversample=1):
+def psf_image(NA, M, pixel_size, LAMBDA, shape=(101, 101), center=None, oversample=1):
     """
     Simule l'image d'un émetteur ponctuel sur une caméra.
 
@@ -67,7 +67,7 @@ def psf_image(NA, M, pixel_size, shape=(101, 101), center=None, oversample=1):
     X, Y = np.meshgrid(xs, ys)
 
     r = np.hypot(X - x0, Y - y0) * pixel_size
-    img = psf(NA, r, M)
+    img = psf(NA, r, M, LAMBDA)
 
     # moyenne sur les s x s sous-échantillons de chaque pixel
     return img.reshape(ny, s, nx, s).mean(axis=(1, 3))
@@ -117,7 +117,7 @@ def particle_image(NA, M, pixel_size, LAMBDA, radius, shape=(101, 101), center=N
     hk = int(np.ceil(kernel_airy_radii * r_airy / d))
     k = np.arange(-hk, hk + 1)
     KX, KY = np.meshgrid(k, k)
-    kernel = psf(NA, np.hypot(KX, KY) * d, M)
+    kernel = psf(NA, np.hypot(KX, KY) * d, M, LAMBDA)
     kernel /= kernel.sum()
 
     # --- objet sur la grille fine, avec marge hk pour éviter les effets de bord ---
