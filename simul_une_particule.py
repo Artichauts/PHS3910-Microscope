@@ -28,4 +28,7 @@ if __name__ == "__main__":
     for i in range(N_steps):
         img = particle_image(NA=0.9, M=-40, pixel_size=1.55e-6, radius=R, LAMBDA=Lambda,
                         shape=(max(x), max(y)), center=(x[i], y[i]))
+        image_array[i] = img
         # Ici vous pouvez ajouter du code pour visualiser ou sauvegarder l'image générée si nécessaire.
+
+    

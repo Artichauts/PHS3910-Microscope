@@ -86,3 +86,4 @@ def all_tif_pos_gauss(chemin):
         positions.append([x0, y0, err_x, err_y, err_loc])
     return positions
 
+def
