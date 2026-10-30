@@ -4,7 +4,7 @@ from backend.detection_pic import position_gaussian, position_centroid
 
 import numpy as np
 import matplotlib.pyplot as plt
-
+from tqdm import tqdm
 
 if __name__ == "__main__":
     # Paramètres pour le mouvement brownien
@@ -32,19 +32,23 @@ if __name__ == "__main__":
     pixel_size = 1.55e-6
     R = 2e-6
 
-    dim_x = int(np.ceil(np.max(x))) + 1
-    dim_y = int(np.ceil(np.max(y))) + 1
+    dim_x = int(np.max(x) - np.min(x)) + 1
+    dim_y = int(np.max(y) - np.min(y)) + 1
 
 
-    image_array = np.zeros((N_steps, dim_x, dim_y))  # Tableau pour stocker les images générées
-    
+    image_array = np.zeros((N_steps, 380, 507))  # Tableau pour stocker les images générées
+
     # Générer l'image de la particule à partir des positions générées
 
-    for i in range(N_steps):
+    for i in tqdm(range(N_steps), desc="Génération des images"):
         img = particle_image(NA=0.9, M=-40, pixel_size=1.55e-6, radius=R, LAMBDA=Lambda,
-                        shape=(dim_x, dim_y), center=(x[i], y[i]))
+                        shape=(380, 507), center=(x[i], y[i]))
         image_array[i] = img
         # Ici vous pouvez ajouter du code pour visualiser ou sauvegarder l'image générée si nécessaire.
+
+    plt.imshow(image_array[0], cmap="gray", origin="lower")
+    plt.show()
+
 
     positions_gaussian = position_gaussian(image_array)
     position_centroid = position_centroid(image_array)
