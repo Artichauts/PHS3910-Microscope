@@ -153,5 +153,6 @@ plt.xlabel("x (pixels)")
 plt.ylabel("y (pixels)")
 plt.show()
 
+hdsbfaSfhsd
 
 # oversample: Un vrai pixel de caméra n’échantillonne pas la PSF en un seul point : il intègre la lumière sur toute sa surface. Avec oversample=1, on calcule la PSF seulement au centre de chaque pixel (approximation ponctuelle). Avec oversample=s, on découpe chaque pixel en une grille de $s \times s$ sous-points, on calcule la PSF en chacun, puis on fait la moyenne. Plus s est grand, plus c’est fidèle à un vrai capteur, mais plus le calcul est long. Quand le pic de la PSF est étalé sur plusieurs pixels, oversample=1 suffit presque. Quand il ne couvre que 1 à 3 pixels, oversample=3 à 5 fait une vraie différence.
