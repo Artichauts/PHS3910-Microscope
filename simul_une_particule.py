@@ -108,7 +108,8 @@ if __name__ == "__main__":
     for i in tqdm(range(N_steps), desc="Génération des images"):
         img = particle_image(NA=0.45, M=-10, pixel_size=px_size, radius=R, LAMBDA=Lambda,
                         shape=(ny, nx), center=(x[i]*Mabs/px_size + nx/2, y[i]*Mabs/px_size + ny/2))
-        image_array[i] = img
+        
+        image_array[i] = img  # Ajouter l'image générée au tableau
         # Ici vous pouvez ajouter du code pour visualiser ou sauvegarder l'image générée si nécessaire.
 
     plt.imshow(image_array[0], cmap="gray", origin="lower")
