@@ -104,7 +104,17 @@ def position_gaussian(data):
 #####################################################################################################
 
 def decouper(image, x, y, demi=15):
-    """Retourne l'encadré autour de (x, y) et son coin en haut à gauche."""
+    """Découpe un petit encadré de l'image autour du point (x, y).
+
+    Cette fonction retourne trois choses :
+      - fenetre : le morceau d'image découpé, d'environ (2*demi+1) x (2*demi+1) pixels
+      - x1, y1 : la position du coin en haut à gauche de l'encadré, dans l'image complète
+
+    Pour revenir à la position dans l'image complète, à partir d'une position
+    (x0, y0) trouvée dans l'encadré (par un fit, par exemple) :
+        x_image = x0 + x1
+        y_image = y0 + y1
+    """
     x, y = int(round(x)), int(round(y))
     x1, x2 = max(x - demi, 0), min(x + demi + 1, image.shape[1])
     y1, y2 = max(y - demi, 0), min(y + demi + 1, image.shape[0])
@@ -112,33 +122,50 @@ def decouper(image, x, y, demi=15):
 
 def trouver_particules(image, k=5, aire_min=5):
     """Retourne la liste des positions (x, y) des particules trouvées."""
-    lisse = gaussian_filter(image, 2)                   # réduit le bruit
+
+    lisse = gaussian_filter(image, 2)
+
     fond = np.median(lisse)
-    bruit = 1.4826 * np.median(np.abs(lisse - fond))    # estimation du bruit
-    masque = lisse > fond + k * bruit                   # seuil
-    etiquettes, n = label(masque)                       # numérote chaque tache
+    bruit = 1.4826 * np.median(np.abs(lisse - fond))    
+    seuil = lisse > fond + k * bruit
+
+    # Les pixels qui dépasse le seuil sont numéroté                   
+    etiquettes, n = label(seuil)                       
     if n == 0:
         return []
+    
     indices = range(1, n + 1)
-    aires = sum(masque, etiquettes, indices)
+
+    aires = sum(seuil, etiquettes, indices)
     pics = maximum_position(lisse, etiquettes, indices)
-    return [(x, y) for (y, x), aire in zip(pics, aires) if aire >= aire_min]
 
-def suivre_particules(data, demi=20):
-    """data : tableau (pages, hauteur, largeur). Retourne une trace par particule."""
-    positions = trouver_particules(data[0])          # toutes les particules de la 1re image
-    traces = [[p] for p in positions]                # une liste de positions par particule
-    derniere = list(positions)                       # dernière position valide de chacune
+    #On garde seulement les taches assez grandes
+    positions = []
+    for i in range(n):
+        aire = aires[i]
+        ligne, colonne = pics[i]
+        if aire >= aire_min:
+            positions.append((colonne, ligne))   # (x, y) = (colonne, ligne)
+    return positions
 
-    for image in data[1:]:
-        for k, trace in enumerate(traces):
-            x_prec, y_prec = derniere[k]
-            fenetre, x1, y1 = decouper(image, x_prec, y_prec, demi)
+
+def suivre_particules(data, demi_depart=20, k=5, aire_min=5, marge=10, demi_max=200):
+    """data : tableau (pages, hauteur, largeur). Retourne une liste de positions par particule."""
+    positions = trouver_particules(data[0], k, aire_min)
+    derniere = list(positions)                  # dernière position valide de chaque particule
+    demis = [demi_depart] * len(positions)      # demi-largeur de l'encadré de chaque particule
+    traces = [[] for _ in positions]            # positions de chaque particule, image par image
+
+    for image in data:                          # toutes les images, la première incluse
+        for j in range(len(traces)):
+            x_prec, y_prec = derniere[j]
+            fenetre, x1, y1 = decouper(image, x_prec, y_prec, demis[j])
             try:
                 x0, y0, err_x, err_y, sigma = gaussian_fit(fenetre)
-                x, y = x0 + x1, y0 + y1              # retour aux coordonnées de l'image
-                trace.append((x, y))
-                derniere[k] = (x, y)
-            except RuntimeError:                     # fit raté : on garde la trace, on note nan
-                trace.append((np.nan, np.nan))
+                x, y = x0 + x1, y0 + y1                         # retour aux coordonnées de l'image
+                traces[j].append((x, y))
+                derniere[j] = (x, y)
+                demis[j] = min(int(5 * abs(sigma)) + marge, demi_max)   # l'encadré s'adapte
+            except RuntimeError:                                # le fit a échoué
+                traces[j].append((np.nan, np.nan))
     return traces
