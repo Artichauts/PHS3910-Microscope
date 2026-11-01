@@ -124,19 +124,25 @@ def trouver_particules(image, k=5, aire_min=5):
     """Retourne la liste des positions (x, y) des particules trouvées."""
 
     lisse = gaussian_filter(image, 2)
-
     fond = np.median(lisse)
-    bruit = 1.4826 * np.median(np.abs(lisse - fond))    
-    seuil = lisse > fond + k * bruit
 
+    # Pour convertir Median Absolute Deviation (MAD) en écart-type, on multiplie par 1.4826
+    bruit = 1.4826 * np.median(np.abs(lisse - fond)) 
+
+    # Seul les pixels qui dépasse le seuil sont considérés
+    # k signifie au moins x fois la taille du bruit au-dessus du fond
+    seuil = fond + k * bruit
+    masque = lisse > seuil
+
+    print("masque", masque)
     # Les pixels qui dépasse le seuil sont numéroté                   
-    etiquettes, n = label(seuil)                       
+    etiquettes, n = label(masque)                       
     if n == 0:
         return []
     
     indices = range(1, n + 1)
 
-    aires = sum(seuil, etiquettes, indices)
+    aires = sum(masque, etiquettes, indices)
     pics = maximum_position(lisse, etiquettes, indices)
 
     #On garde seulement les taches assez grandes

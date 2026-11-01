@@ -65,7 +65,7 @@ def analyse_one_molecule_image(image_array, pixel_size, M):
 if __name__ == "__main__":
 
     # Paramètres pour le mouvement brownien
-    N_steps = 50  # Nombre de pas de trajectoire
+    N_steps = 5  # Nombre de pas de trajectoire
     R = 2e-6   # rayon de la particule (m)
     kb = 1.380649e-23  # constante de Boltzmann (J/K)
     T = 298  # température (K)
@@ -98,7 +98,7 @@ if __name__ == "__main__":
     dim_x = np.int64(np.max(x) - np.min(x)) + 1
     dim_y = np.int64(np.max(y) - np.min(y)) + 1
 
-    ny, nx = 507, 380
+    ny, nx = 4056, 3040
 
     image_array = np.zeros((N_steps, ny, nx))  # Tableau pour stocker les images générées
 
