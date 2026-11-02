@@ -37,14 +37,6 @@ def capture_one_frame():
 
 
 
-
-
-
-
-
-
-
-
 def capture_multipage_tiff(num_frames=10, filename="output_stack.tiff", interval=0.1):
     """
     Captures multiple frames using Picamera2 and saves them into a 

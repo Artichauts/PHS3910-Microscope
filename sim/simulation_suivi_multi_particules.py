@@ -8,7 +8,7 @@ import math
 import numpy as np
 
 from backend.fct_PSF import particle_image
-from backend.detection_pic_revise import suivre_particules
+from sim.detection_pic_revise import suivre_particules
 
 
 # =============================================================================
