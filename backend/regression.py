@@ -26,7 +26,7 @@ def msd_fft(r):
   return S1-2*S2
 
 
-  
+# timestamp est le x et msd_fft(data) est le y
 def regression(x, y, a_x= None, a_y= None):
     """
     Regression lineaire
