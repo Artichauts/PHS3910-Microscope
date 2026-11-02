@@ -36,7 +36,6 @@ def capture_one_frame():
     return frame
 
 
-<<<<<<< HEAD
 def capture_to_npz(folder_path, num_frames=50, filename="output_frames.npz", interval=0.1):
     """
     Captures frames using Picamera2 and saves them memory-efficiently into an 
@@ -119,8 +118,6 @@ def capture_to_npz(folder_path, num_frames=50, filename="output_frames.npz", int
 
 
 
-=======
->>>>>>> refs/remotes/origin/main
 
 def capture_multipage_tiff(num_frames=10, filename="output_stack.tiff", interval=0.1):
     """
@@ -216,12 +213,8 @@ def capture_video(num_frames=100, filename="output_video.mp4", fps=10):
         cam.close()
         print("Camera closed and video saved successfully!")
 
-<<<<<<< HEAD
 
-
+# Example usage:
 capture_to_npz(folder_path="/home/phs3910/captured_data", num_frames=50, filename="02102026.npz", interval=0.1)
 #capture_video(num_frames=100, filename="output.mp4", fps=15)
-=======
-# Example usage:
 capture_video(num_frames=100, filename="output.mp4", fps=15)
->>>>>>> refs/remotes/origin/main
