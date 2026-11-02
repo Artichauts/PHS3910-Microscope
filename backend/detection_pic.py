@@ -2,6 +2,7 @@ import numpy as np
 import tifffile
 from scipy.optimize import curve_fit
 from scipy.ndimage import gaussian_filter, label, maximum_position, sum 
+import math
 
 def Load_tif_file_norm(file_path):
     """Retourne le contenu d'un .tif normalisé entre 0 et 1.
@@ -54,12 +55,47 @@ def gauss(x, a, x0, sigma, b):
 
 def fit_profil(profil):
     """Fit gaussien d'un profil 1D. Retourne les paramètres et leurs incertitudes."""
-    x = np.arange(len(profil))
+    profil = np.asarray(profil, dtype=float)
 
-    # Valeurs de départ 
-    p0 = [profil.max() - profil.min(), np.argmax(profil), 3, profil.min()]
+    # Les premiers if sont pour détecter les erreurs de profil avant de lancer le fit, pour éviter des messages d'erreur incompréhensibles.
+    if profil.ndim != 1 or len(profil) < 3:
+        raise ValueError("Le profil doit etre un tableau 1D d'au moins 3 points.")
 
-    popt, pcov = curve_fit(gauss, x, profil, p0=p0)
+    if not np.all(np.isfinite(profil)):
+        raise ValueError("Le profil contient des valeurs non finies.")
+
+    fond_initial = float(np.median(profil))
+    amplitude_initiale = float(np.max(profil) - fond_initial)
+
+    if amplitude_initiale <= 0.0:
+        raise RuntimeError("Aucun pic positif dans le profil.")
+
+    # Paramètres initiaux pour le fit gaussien
+    centre_initial = float(np.argmax(profil))
+    sigma_initial = max(1.0, len(profil) / 10.0)
+    print("sigma inital: ", sigma_initial)
+
+    p0 = [
+        amplitude_initiale,
+        centre_initial,
+        sigma_initial,
+        fond_initial
+    ]
+
+    x = np.arange(len(profil), dtype=float)
+
+    bornes_inferieures = [0.0, 0.0, 0.3, -np.inf]
+    bornes_superieures = [np.inf, len(profil) - 1.0, len(profil), np.inf]
+
+    popt, pcov = curve_fit(
+        gauss,
+        x,
+        profil,
+        p0=p0,
+        bounds=(bornes_inferieures, bornes_superieures),
+        max_nfev=10000
+    )
+
     erreurs = np.sqrt(np.diag(pcov))
     return popt, erreurs
 
@@ -67,11 +103,17 @@ def gaussian_fit(image):
     """image : UNE page (tableau 2D). Retourne x0, y0 en pixels et leurs incertitudes.
     On fait la somme des lignes et des colonnes pour obtenir les profils selon x et y en 1D,
     puis on fit un gaussien sur ces profils."""
+
     profil_x = image.sum(axis=0)   # on additionne les lignes -> profil selon x
     profil_y = image.sum(axis=1)   # on additionne les colonnes -> profil selon y
+
     popt_x, err_x = fit_profil(profil_x)
     popt_y, err_y = fit_profil(profil_y)
-    return popt_x[1], popt_y[1], err_x[1], err_y[1], popt_x[2]
+
+    # On prend le sigma le plus grand pour garder une fenêtre assez grande pour englober la particule. 
+    sigma = max(popt_x[2], popt_y[2])
+
+    return popt_x[1], popt_y[1], err_x[1], err_y[1], sigma
 
 def erreur_localisation(image, sigma, val_max):
     N = ((image - np.median(image)).clip(min=0).sum())*val_max
@@ -120,58 +162,125 @@ def decouper(image, x, y, demi=15):
     y1, y2 = max(y - demi, 0), min(y + demi + 1, image.shape[0])
     return image[y1:y2, x1:x2], x1, y1
 
-def trouver_particules(image, k=5, aire_min=5):
+def trouver_particules(image, k=5, aire_min=5, marge_bord=0):
     """Retourne la liste des positions (x, y) des particules trouvées."""
+
+    image = np.asarray(image, dtype=float)
 
     lisse = gaussian_filter(image, 2)
     fond = np.median(lisse)
 
     # Pour convertir Median Absolute Deviation (MAD) en écart-type, on multiplie par 1.4826
-    bruit = 1.4826 * np.median(np.abs(lisse - fond)) 
+    mad = np.median(np.abs(lisse - fond))
+    bruit = 1.4826 * mad
 
     # Seul les pixels qui dépasse le seuil sont considérés
     # k signifie au moins x fois la taille du bruit au-dessus du fond
     seuil = fond + k * bruit
     masque = lisse > seuil
 
-    print("masque", masque)
+
     # Les pixels qui dépasse le seuil sont numéroté                   
-    etiquettes, n = label(masque)                       
-    if n == 0:
+    etiquettes, nombre_regions = label(masque)                       
+    if nombre_regions == 0:
         return []
     
-    indices = range(1, n + 1)
+    indices = range(1, nombre_regions + 1)
 
     aires = sum(masque, etiquettes, indices)
     pics = maximum_position(lisse, etiquettes, indices)
 
     #On garde seulement les taches assez grandes
     positions = []
-    for i in range(n):
-        aire = aires[i]
-        ligne, colonne = pics[i]
-        if aire >= aire_min:
-            positions.append((colonne, ligne))   # (x, y) = (colonne, ligne)
+    for region_index in range(nombre_regions):
+        aire = aires[region_index]
+        if aire < aire_min:
+            continue
+        ligne, colonne = pics[region_index]
+
+        # Une tache coupee par le bord ne peut pas etre ajustee correctement.
+        if colonne < marge_bord or colonne >= image.shape[1] - marge_bord:
+            continue
+
+        if ligne < marge_bord or ligne >= image.shape[0] - marge_bord:
+            continue
+        
+        positions.append((colonne, ligne))   # (x, y) = (colonne, ligne)
     return positions
 
 
-def suivre_particules(data, demi_depart=20, k=5, aire_min=5, marge=10, demi_max=200):
+def suivre_particules(data, demi_depart=20, k=5, aire_min=5, marge=10, demi_max=200, max_deplacement_px=None, marge_bord=0):
     """data : tableau (pages, hauteur, largeur). Retourne une liste de positions par particule."""
-    positions = trouver_particules(data[0], k, aire_min)
-    derniere = list(positions)                  # dernière position valide de chaque particule
-    demis = [demi_depart] * len(positions)      # demi-largeur de l'encadré de chaque particule
-    traces = [[] for _ in positions]            # positions de chaque particule, image par image
+    positions_initiales = trouver_particules(data[0], k, aire_min, marge_bord)
+    derniere_position_valide = [tuple(position) for position in positions_initiales] # On garde la dernière position valide pour chaque particule
+    demi_fenetres = [int(demi_depart) for _ in positions_initiales] # On garde la taille de la fenêtre pour chaque particule
+    echecs_consecutifs = [0 for _ in positions_initiales] # On garde le nombre d'échecs consécutifs pour chaque particule
+    
+    traces = [[] for _ in positions_initiales]
 
-    for image in data:                          # toutes les images, la première incluse
-        for j in range(len(traces)):
-            x_prec, y_prec = derniere[j]
-            fenetre, x1, y1 = decouper(image, x_prec, y_prec, demis[j])
+    for image_index, image in enumerate(data):                          # toutes les images, la première incluse
+        for track_index in range(len(traces)):
+
+            x_prec, y_prec = derniere_position_valide[track_index]
+            demi = demi_fenetres[track_index] # On garde la taille de la fenêtre pour chaque particule
+
+            fenetre, x1, y1 = decouper(image, x_prec, y_prec, demi)
             try:
                 x0, y0, err_x, err_y, sigma = gaussian_fit(fenetre)
-                x, y = x0 + x1, y0 + y1                         # retour aux coordonnées de l'image
-                traces[j].append((x, y))
-                derniere[j] = (x, y)
-                demis[j] = min(int(5 * abs(sigma)) + marge, demi_max)   # l'encadré s'adapte
-            except RuntimeError:                                # le fit a échoué
-                traces[j].append((np.nan, np.nan))
+                x = x0 + x1
+                y = y0 + y1                         # retour aux coordonnées de l'image
+
+                valeurs_valides = np.all(np.isfinite([x, y, err_x, err_y, sigma]))
+
+                if not valeurs_valides:
+                    raise RuntimeError("Le fit contient des valeurs non finies.")
+
+                if sigma <= 0.0:
+                    raise RuntimeError("La largeur gaussienne est invalide.")
+
+                # Le fit doit rester dans la fenetre extraite.
+                if x0 < 0.0 or x0 >= fenetre.shape[1]:
+                    raise RuntimeError("Le centre x sort de la fenetre.")
+
+                if y0 < 0.0 or y0 >= fenetre.shape[0]:
+                    raise RuntimeError("Le centre y sort de la fenetre.")
+
+                # Eviter qu'un fit saute vers une autre tache tres eloignee.
+                # Apres un echec, la limite augmente avec le nombre d'images
+                # manquees afin de permettre une eventuelle reacquisition.
+                if max_deplacement_px is not None and image_index > 0:
+                    distance = math.sqrt(
+                        (x - x_prec) ** 2 + (y - y_prec) ** 2
+                    )
+
+                    limite = max_deplacement_px * (
+                        echecs_consecutifs[track_index] + 1
+                    )
+
+                    if distance > limite:
+                        raise RuntimeError("Deplacement trop important pour une image.")
+
+                # Le fit est accepte : enregistrer et mettre a jour la position.
+                traces[track_index].append((x, y))
+                derniere_position_valide[track_index] = (x, y)
+                echecs_consecutifs[track_index] = 0
+
+                # Adapter la fenetre a la largeur estimee de la tache.
+                nouveau_demi = int(math.ceil(5.0 * abs(sigma))) + marge
+                nouveau_demi = max(int(demi_depart), nouveau_demi)
+                nouveau_demi = min(nouveau_demi, int(demi_max))
+                demi_fenetres[track_index] = nouveau_demi
+
+            except (RuntimeError, ValueError, FloatingPointError, OverflowError):
+                # Ne pas remplacer la derniere position valide par un NaN.
+                traces[track_index].append((np.nan, np.nan))
+                echecs_consecutifs[track_index] += 1
+
+                # Agrandir progressivement la fenetre pour tenter de retrouver
+                # la particule dans l'image suivante.
+                demi_fenetres[track_index] = min(
+                    demi + marge,
+                    int(demi_max)
+                )
+
     return traces
